@@ -1,0 +1,5 @@
+Decor
+Decoraptor
+Versionable
+
+Just a specific implementation of the decorator design pattern for building versioned resources organized functionally.
