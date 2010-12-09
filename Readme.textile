@@ -126,6 +126,14 @@ Using the versioned instance:
 resource = resource.for(version)
 </pre>
 
+h2. Contributing
+
+Feel free to open "Issues":https://github.com/mtodd/decor/issues or fork and create "Pull Requests":https://github.com/mtodd/decor/pulls.
+
+The minimum for contribution is a failing spec. If you can at least convey what the problem is or the feature you'd like to add in a failing spec, I will be much more motivated to fix the issue or add the feature.
+
+If you'd like to fix the bug or implement the feature yourself, feel free to! Please document and test your code thoroughly and in similar fashion to what already exists.
+
 h2. Copyright and License
 
 The MIT License
