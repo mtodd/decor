@@ -2,8 +2,7 @@ h1. Decor
 
 Define multiple representations of an object.
 
-"Read the documentation":http://empl.us/decor/ or see an example scenario and
-usage below.
+"Read the documentation":http://empl.us/decor/ or see an example scenario and usage below.
 
 h2. Scenario
 
