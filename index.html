@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>decor.rb</title>
+  <link rel="stylesheet" href="http://jashkenas.github.com/docco/resources/docco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>decor.rb</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p> Decor provides a simple way to define multiple representations of an object.</p>
+
+<p> This is useful for when you want to retain multiple versions of your objects
+ while providing a consistent interface between versions.</p>
+
+<p> For example:</p>
+
+<pre><code> class Company &lt; ActiveRecord::Base
+   include Decor
+
+   # the first version, customers are dependent on certain artifacts
+   # like industry_id and industry
+   version "v1" do
+     INDUSTRIES = {1 =&gt; "Farm",
+                   2 =&gt; "Software"}
+
+     def industry
+       INDUSTRIES[industry_id]
+     end
+
+     def as_json(*_)
+       super(:only     =&gt; [:id, :name, :industry_id],
+             :methods  =&gt; [:industry])
+     end
+   end
+
+   # switch to using industry standard codes, cleans up the name
+   version "v2" do
+     SIC_CODES = {...}
+
+     # use the cleaned name for the name instead
+     def name
+       name_cleaned
+     end
+
+     def industry
+       SIC_DOES[sic_code]
+     end
+
+     def as_json(*_)
+       super(:only     =&gt; [:id, :name, :sic_code],
+             :methods  =&gt; [:industry])
+     end
+   end
+
+ end
+</code></pre>
+
+<p> In our API, for instance, we can then define a single endpoint for both
+ versions:</p>
+
+<pre><code> get "/api/:version/companies/:id.json" do
+   Company.find(params[:id]).for(version).to_json
+ end
+</code></pre>
+
+<p> This helps us keep our models fat and our &ldquo;controllers&rdquo; skinny. This also
+ helps unit testing the versions of your API.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="k">module</span> <span class="nn">Decor</span>
+  </pre></div>
+      </td>
+    </tr>
+    <tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p> Decor is a mixin. Include it into your class and then use the <code>version</code>
+ class methods in the class body to define your versions, then use the
+ <code>for</code> instance method on your objects to use a specific version.</p>
+
+<p> For example:</p>
+
+<pre><code> class Model
+   include Decor
+
+   version "v1" do
+     # implement specifics for this version here
+   end
+ end
+
+ model = Model.new.for("v1")
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">included</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="ss">:extend</span><span class="p">,</span> <span class="no">ClassMethods</span><span class="p">)</span>
+    <span class="k">class</span> <span class="o">&lt;&lt;</span> <span class="n">target</span><span class="p">;</span> <span class="kp">attr_accessor</span> <span class="ss">:versions</span><span class="p">;</span> <span class="k">end</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">versions</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="k">end</span>
+  
+  <span class="k">module</span> <span class="nn">ClassMethods</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p> Defines versions of the model&rsquo;s representation.</p>
+
+<p> The <code>version</code> supplied is a string representation of the version.
+ For example, <code>"v1"</code> represents version 1 of this model&rsquo;s representation.</p>
+
+<p> The <code>version</code> is just a key, however, and any value works. Strings are
+ convenient, especially in the form of <code>v1</code> or <code>v2010-12-09</code>.</p>
+
+<p> If a block is provided, the block is treated as the body of the version&rsquo;s
+ definition.</p>
+
+<p> If a hash of <code>version =&gt; version_module</code> is passed in, we use your module
+ instead of creating our own.</p>
+
+<p> For example:</p>
+
+<pre><code> class Model
+   include Decor
+
+   version "v1" do
+     # ...
+   end
+
+   module V20101209
+     # ...
+   end
+   version "v2010-12-09" =&gt; V20101209
+
+   # or use classes (for example) as version keys and alias to other
+   # versions
+   version AnotherModel  =&gt; "v1"
+   version OtherModel    =&gt; V20101209
+
+ end
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="k">def</span> <span class="nf">version</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">block</span><span class="p">)</span>
+      <span class="k">case</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p> Look up version module if no version block or module specified.</p>
+
+<pre><code> version "v1" #=&gt; #&lt;Module&gt;
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>      <span class="k">when</span> <span class="nb">self</span><span class="o">.</span><span class="n">versions</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="n">version</span><span class="p">)</span>
+        <span class="nb">self</span><span class="o">.</span><span class="n">versions</span><span class="o">[</span><span class="n">version</span><span class="o">]</span>
+        </pre></div>
+      </td>
+    </tr>
+    <tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p> Define a new version from the block.</p>
+
+<pre><code> version "v1" { ... }
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>      <span class="k">when</span> <span class="nb">block_given?</span>
+        <span class="n">constant</span> <span class="o">=</span> <span class="no">Module</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">block</span><span class="p">)</span>
+        <span class="nb">self</span><span class="o">.</span><span class="n">versions</span><span class="o">[</span><span class="n">version</span><span class="o">]</span> <span class="o">=</span> <span class="n">constant</span>
+        <span class="nb">self</span>
+        </pre></div>
+      </td>
+    </tr>
+    <tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p> Set versions from a module, supports as many versions as passed in.</p>
+
+<pre><code> version "v1"        =&gt; Version1,
+         "v2"        =&gt; Version2,
+         "v20101209" =&gt; "v2" # supports aliases
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>      <span class="k">else</span>
+        <span class="n">version</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="p">(</span><span class="n">new_version</span><span class="p">,</span> <span class="n">module_or_version</span><span class="p">)</span><span class="o">|</span>
+          <span class="nb">self</span><span class="o">.</span><span class="n">versions</span><span class="o">[</span><span class="n">new_version</span><span class="o">]</span> <span class="o">=</span>
+          <span class="k">if</span> <span class="n">module_or_version</span><span class="o">.</span><span class="n">is_a?</span><span class="p">(</span><span class="no">Module</span><span class="p">)</span>
+            <span class="n">module_or_version</span>
+          <span class="k">else</span>
+            <span class="nb">self</span><span class="o">.</span><span class="n">versions</span><span class="o">[</span><span class="n">module_or_version</span><span class="o">]</span>
+          <span class="k">end</span>
+        <span class="k">end</span>
+        
+      <span class="k">end</span>
+      <span class="nb">self</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+  </pre></div>
+      </td>
+    </tr>
+    <tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p> An object will be told to behave like the version specified.</p>
+
+<p> Options provide additional values in the context of the verions.</p>
+
+<pre><code> class Model
+   include Decor
+
+   version "v1" do
+     def versioned?
+       true
+     end
+   end
+
+   def versioned?
+     false
+   end
+ end
+
+ model = Model.new
+ model.          versioned?  #=&gt; false
+ model.for("v1").versioned?  #=&gt; true
+</code></pre>
+
+<p> An optional context can be supplied which will make external resources
+ available for specific functions in your versions. For example:</p>
+
+<pre><code> class User
+   include Decor
+
+   version "v1" do
+     def display_name
+       "%s (%s)" % [name, band.display_name]
+     end
+   end
+ end
+
+ user = User.find(id).for("v1", :band =&gt; external_band)
+ user.display_name #=&gt; "Dan Auerbach (The Black Keys)"
+</code></pre>
+
+<p> Lastly, it&rsquo;s possible to pass in a <code>:module</code> option which will override the
+ module already defined for the version specified (making the <code>version</code>
+ passed in almost meaningless).</p>
+
+<pre><code> module Specialized
+   # special considerations here
+ end
+
+ Model.new.for("v1", :module =&gt; Specialized)
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="k">def</span> <span class="nf">for</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">options</span> <span class="o">=</span> <span class="p">{})</span>
+    <span class="n">version</span> <span class="o">||=</span> <span class="s2">&quot;v1&quot;</span>
+    <span class="n">version_module</span> <span class="o">=</span> <span class="nb">self</span><span class="o">.</span><span class="n">version_module_for</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+    <span class="n">decorator</span> <span class="o">=</span> <span class="no">Class</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="no">Base</span><span class="p">)</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="nb">self</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+    <span class="n">decorator</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="ss">:extend</span><span class="p">,</span> <span class="n">version_module</span><span class="p">)</span>
+    <span class="n">decorator</span>
+  <span class="k">end</span>
+  </pre></div>
+      </td>
+    </tr>
+    <tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p> Handles finding the module defined for the <code>version</code> specified, or
+ overriding with the <code>:module</code> option.</p>
+
+<p> See <code>for</code> for details.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="k">def</span> <span class="nf">version_module_for</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">options</span> <span class="o">=</span> <span class="p">{})</span>
+    <span class="k">return</span> <span class="n">options</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="ss">:module</span><span class="p">)</span>      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="ss">:module</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">versions</span><span class="o">[</span><span class="n">version</span><span class="o">]</span> <span class="k">if</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">versions</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="n">version</span><span class="p">)</span>
+    <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">const_get</span><span class="p">(</span><span class="n">version</span><span class="o">.</span><span class="n">upcase</span><span class="p">)</span>
+  <span class="k">end</span>
+  </pre></div>
+      </td>
+    </tr>
+    <tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p> The basis of our version wrapper.</p>
+
+<p> Whenever a version is specified using <code>Decor#for</code>, it is wrapped in a
+ decoration that makes it behave like the specified version.</p>
+
+<p> This decoration proxies all calls it doesn&rsquo;t define itself to the original
+ object (the <code>target</code>).</p>
+
+<p> <code>options</code> provides context, which are treated as instance methods for the
+ versions. See <code>for</code> for details.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="k">class</span> <span class="nc">Base</span> <span class="o">&lt;</span> <span class="no">Struct</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="ss">:target</span><span class="p">,</span> <span class="ss">:version</span><span class="p">,</span> <span class="ss">:options</span><span class="p">)</span>
+    </pre></div>
+      </td>
+    </tr>
+    <tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p> This proxies calls to the target if we don&rsquo;t define it explicitly.</p>
+
+<p> However, if the <code>options</code> context defines a key that matches the <code>method</code>
+ name, we return that value instead.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="k">def</span> <span class="nf">method_missing</span><span class="p">(</span><span class="nb">method</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">block</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">options</span><span class="o">[</span><span class="nb">method</span><span class="o">]</span>                    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="nb">method</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">target</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="nb">method</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">block</span><span class="p">)</span> <span class="k">if</span> <span class="nb">respond_to?</span><span class="p">(</span><span class="nb">method</span><span class="p">)</span>
+      <span class="k">super</span>
+    <span class="k">end</span>
+    </pre></div>
+      </td>
+    </tr>
+    <tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p> We can handle the method call if we have a match in the <code>options</code> context
+ or if our <code>target</code> object responds to the method.</p>
+
+<p> For example:</p>
+
+<pre><code> class Model
+   include Decor
+
+   version "v1" do
+     def foo
+     end
+   end
+
+   def baz
+   end
+
+ end
+
+ model = Model.new.for("v1", :bar =&gt; true)
+ model.respond_to?(:foo)   #=&gt; true # in version
+ model.respond_to?(:bar)   #=&gt; true # in context
+ model.respond_to?(:baz)   #=&gt; true # on target
+ model.respond_to?(:quux)  #=&gt; false
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="k">def</span> <span class="nf">respond_to?</span><span class="p">(</span><span class="nb">method</span><span class="p">)</span>
+      <span class="k">super</span> <span class="ow">or</span> <span class="n">options</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="nb">method</span><span class="p">)</span> <span class="ow">or</span> <span class="n">target</span><span class="o">.</span><span class="n">respond_to?</span><span class="p">(</span><span class="nb">method</span><span class="p">)</span>
+    <span class="k">end</span>
+    </pre></div>
+      </td>
+    </tr>
+    <tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p> If <code>for</code> is called on an object that is already wrapped by a version,
+ we return the <code>target</code> with a new version wrapper. This allows for an
+ object to change its version representation at will.</p>
+
+<p> For example:</p>
+
+<pre><code> class Model
+   include Decor
+
+   version "v1" do
+     def original?
+       true
+     end
+   end
+
+   version "v2" do
+     def original?
+       false
+     end
+   end
+ end
+
+ model = Model.new.for("v1")
+ model.original? #=&gt; true
+
+ model = model.for("v2")
+ model.original? #=&gt; false
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="k">def</span> <span class="nf">for</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+      <span class="n">target</span><span class="o">.</span><span class="n">for</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">end</span>
+    </pre></div>
+      </td>
+    </tr>
+    <tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p> This provides additional context to the versions specified. Useful for
+ making external resources accessible, overriding accessors, etc.</p>
+
+<p> Ensures <code>options</code> is an empty Hash even when not set.</p>
+
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="k">def</span> <span class="nf">options</span>
+      <span class="k">super</span> <span class="ow">or</span> <span class="k">begin</span>
+        <span class="nb">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">redo</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+    
+  <span class="k">end</span>
+  
+<span class="k">end</span></pre></div>
+      </td>
+    </tr>
+    </table>
+</div>
+</body>
