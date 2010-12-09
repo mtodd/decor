@@ -55,6 +55,8 @@
 # This helps us keep our models fat and our "controllers" skinny. This also
 # helps unit testing the versions of your API.
 # 
+# Further details can be found on [Github](https://github.com/mtodd/decor/).
+# 
 module Decor
   
   # Decor is a mixin. Include it into your class and then use the `version`
