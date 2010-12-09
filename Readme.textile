@@ -1,5 +1,147 @@
-Decor
-Decoraptor
-Versionable
+h1. Decor
 
-Just a specific implementation of the decorator design pattern for building versioned resources organized functionally.
+h2. Scenario
+
+You have an API. It returns provides access to a User resource. This resource:
+
+<pre>
+create_table do |t|
+  t.string :screen_name
+  t.string :state,  :default => "active"
+  t.string :role,   :default => "user"
+end
+
+class User < ActiveRecord::Base
+  STATES  = ["active", "inactive"]
+  ROLES   = ["user", "admin"]
+end
+</pre>
+
+At one point, you had just defined booleans for @active@ and @admin@, but you have plans to expand the states and roles of a User. However, you already provide an API that you do not wish to break.
+
+How do you transition your code and your data over and not break backwards compatibility? How do you do this modularly and in an easily testable way without making your API endpoints (controllers et al) heavy?
+
+How about:
+
+<pre>
+class User < ActiveRecord::Base
+  include Decor
+  
+  STATES  = ["active", "inactive"]
+  ROLES   = ["user", "admin"]
+  
+  version "v1" do
+    def active
+      state == "active"
+    end
+    def admin
+      role == "admin"
+    end
+    
+    def as_json(options = {})
+      super(options.merge(:only => [:screen_name],
+                          :methods => [:active, :admin]))
+    end
+  end
+  
+  version "v2" do
+    def as_json(*args)
+      super(options.merge(:only => [:screen_name, :state, :role]))
+    end
+  end
+  
+end
+</pre>
+
+Then, our endpoint:
+
+<pre>
+get '/api/:version/users/:id' do
+  @user = User.find(params[:id])
+  @user.for(version).to_json
+end
+</pre>
+
+You can also include external resources providing some contextual influence over how your resources choose to represent themselves:
+
+<pre>
+class User < ActiveRecord::Base
+  include Decor
+  
+  version "v3" do
+    def screen_name
+      "%s (%s)" % [super, organization.name]
+    end
+  end
+  
+end
+
+get '/api/:version/organizations/:org_id/users/:id' do
+  @organization = Organization.find(params[:org_id])
+  @user = User.find(params[:id]).for(version, :organization => @organization)
+  @user.to_json
+end
+</pre>
+
+h2. Example Usage
+
+Defining your class and versions:
+
+<pre>
+class Resource < Struct.new(:name, :value)
+  include Decor
+  
+  version "v1" do
+    # a computed value specific to this version
+    def computed
+      value * 10
+    end
+  end
+  
+  version "v2" do
+    # overloaded name
+    def name
+      super.reverse
+    end
+    
+    # different computed value for this version
+    def computed
+      value * 100
+    end
+  end
+  
+  def unversioned
+    "yes"
+  end
+end
+</pre>
+
+Using the versioned instance:
+
+<pre>
+resource = resource.for(version)
+</pre>
+
+h2. Copyright and License
+
+The MIT License
+
+Copyright (c) 2010 Matt Todd.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
