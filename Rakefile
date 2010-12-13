@@ -7,8 +7,6 @@ rescue Bundler::BundlerError => e
   $stderr.puts "Run `bundle install` to install missing gems"
   exit e.status_code
 end
-require "rake"
-require "rake/tasklib"
 
 require 'rspec/core/rake_task'
 RSpec::Core::RakeTask.new do |t|
