@@ -4,5 +4,3 @@ require 'bundler/setup'
 require 'decor'
 
 require 'rspec'
-
-require 'models/resource'

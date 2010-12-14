@@ -1,6 +1,7 @@
 require 'spec_helper'
 
 require 'models/bare'
+require 'models/resource'
 
 describe Decor do
   
