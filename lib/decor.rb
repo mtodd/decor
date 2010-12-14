@@ -122,7 +122,7 @@ module Decor
       # Look up version module if no version block or module specified.
       #     version "v1" #=> #<Module>
       when self.versions.key?(version)
-        self.versions[version]
+        return self.versions[version]
         
       # Define a new version from the block.
       #     version "v1" { ... }
@@ -199,7 +199,6 @@ module Decor
   #     Model.new.for("v1", :module => Specialized)
   # 
   def for(version, options = {})
-    version ||= "v1"
     version_module = self.version_module_for(version, options)
     decorator = Class.new(Base).new(self, version, options)
     decorator.send(:extend, version_module)
