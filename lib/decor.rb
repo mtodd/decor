@@ -34,7 +34,7 @@
 #         end
 #         
 #         def industry
-#           SIC_DOES[sic_code]
+#           SIC_CODES[sic_code]
 #         end
 #         
 #         def as_json(*_)
