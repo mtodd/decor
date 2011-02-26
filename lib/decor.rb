@@ -200,9 +200,21 @@ module Decor
   # 
   def for(version, options = {})
     version_module = self.version_module_for(version, options)
-    decorator = Class.new(Base).new(self, version, options)
-    decorator.send(:extend, version_module)
-    decorator
+
+    # Extend the current instance with the version module
+    self.extend(version_module)
+
+    # Options can override specific methods
+    options = { :version => version }.merge(options)
+    options.each do |option, value_or_proc|
+      if value_or_proc.is_a?(Proc) or value_or_proc.is_a?(Method)
+        self.class.send(:define_method, option, value_or_proc)
+      else
+        self.class.send(:define_method, option) { value_or_proc }
+      end
+    end
+
+    self
   end
   
   # Handles finding the module defined for the `version` specified, or
@@ -215,103 +227,4 @@ module Decor
     return self.class.versions[version] if self.class.versions.key?(version)
     self.class.const_get(version.upcase)
   end
-  
-  # The basis of our version wrapper.
-  # 
-  # Whenever a version is specified using `Decor#for`, it is wrapped in a
-  # decoration that makes it behave like the specified version.
-  # 
-  # This decoration proxies all calls it doesn't define itself to the original
-  # object (the `target`).
-  # 
-  # `options` provides context, which are treated as instance methods for the
-  # versions. See `for` for details.
-  # 
-  class Base < Struct.new(:target, :version, :options)
-    
-    # This proxies calls to the target if we don't define it explicitly.
-    # 
-    # However, if the `options` context defines a key that matches the `method`
-    # name, we return that value instead.
-    # 
-    def method_missing(method, *args, &block)
-      return options[method]                    if options.key?(method)
-      return target.send(method, *args, &block) if respond_to?(method)
-      super
-    end
-    
-    # We can handle the method call if we have a match in the `options` context
-    # or if our `target` object responds to the method.
-    # 
-    # For example:
-    # 
-    #     class Model
-    #       include Decor
-    #       
-    #       version "v1" do
-    #         def foo
-    #         end
-    #       end
-    #       
-    #       def baz
-    #       end
-    #       
-    #     end
-    # 
-    #     model = Model.new.for("v1", :bar => true)
-    #     model.respond_to?(:foo)   #=> true # in version
-    #     model.respond_to?(:bar)   #=> true # in context
-    #     model.respond_to?(:baz)   #=> true # on target
-    #     model.respond_to?(:quux)  #=> false
-    # 
-    def respond_to?(method)
-      super or options.key?(method) or target.respond_to?(method)
-    end
-    
-    # If `for` is called on an object that is already wrapped by a version,
-    # we return the `target` with a new version wrapper. This allows for an
-    # object to change its version representation at will.
-    # 
-    # For example:
-    # 
-    #     class Model
-    #       include Decor
-    #       
-    #       version "v1" do
-    #         def original?
-    #           true
-    #         end
-    #       end
-    #       
-    #       version "v2" do
-    #         def original?
-    #           false
-    #         end
-    #       end
-    #     end
-    # 
-    #     model = Model.new.for("v1")
-    #     model.original? #=> true
-    #     
-    #     model = model.for("v2")
-    #     model.original? #=> false
-    # 
-    def for(*args)
-      target.for(*args)
-    end
-    
-    # This provides additional context to the versions specified. Useful for
-    # making external resources accessible, overriding accessors, etc.
-    # 
-    # Ensures `options` is an empty Hash even when not set.
-    # 
-    def options
-      super or begin
-        self.options = {}
-        redo
-      end
-    end
-    
-  end
-  
 end

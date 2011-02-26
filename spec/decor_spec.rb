@@ -2,6 +2,7 @@ require 'spec_helper'
 
 require 'models/bare'
 require 'models/resource'
+require 'models/company'
 
 describe Decor do
   
@@ -50,16 +51,12 @@ describe Decor do
         subject.for("v1").version.should == "v1"
       end
       
-      it "should target the instance" do
-        subject.for("v1").target.should be_a(Bare)
-        subject.for("v1").target.should == subject
+      it "should be the instance" do
+        subject.for("v1").should be_a(Bare)
+        subject.for("v1").should == subject
       end
       
-      it "should decorate with an instance of Decor::Base" do
-        subject.for("v1").should be_a(Decor::Base)
-      end
-      
-      it "should decorate by including the version module" do
+      it "should decorate by extending the version module" do
         subject.for("v1").should be_a(Bare.version("v1"))
       end
       
@@ -67,20 +64,12 @@ describe Decor do
     
   end
   
-  describe Decor::Base do
+  describe "decoration behavior" do
     before{ @version = "v1"; @name = "foo"; @value = 2; @multi = 2; @options = {} }
     subject{ Resource.new(@name, @value, @multi).for(@version, @options) }
     
     it "should delegate to the object" do
       subject.name.should == @name
-    end
-    
-    it "should allow version switching" do
-      resource = subject
-      resource.version.should == "v1"
-      resource = resource.for("v2")
-      resource.version.should == "v2"
-      resource.name.should == @name.upcase
     end
     
     it "should allow overriding the module for the version" do
@@ -122,7 +111,7 @@ describe Decor do
       end
       
       it "should be the same as its alias" do
-        subject.should be_a(subject.target.class.version("v2"))
+        subject.should be_a(subject.class.version("v2"))
       end
     end
     
@@ -131,6 +120,40 @@ describe Decor do
       
       it "should use values in the context hash as methods" do
         subject.name.should == "%s (%s)" % [@name, @options[:foo]]
+      end
+    end
+
+    describe "v3 with block" do
+      before{ @version = "v3"; @options = {:foo => Proc.new { "bar" } } }
+
+      it "should use values in the context hash as methods" do
+        subject.name.should == "%s (%s)" % [@name, @options[:foo].call]
+      end
+    end
+
+    describe "maintaining object identity" do
+      subject { Company.new }
+      before do
+        subject.v1_field = 'v1'
+        subject.v2_field = 'v2'
+      end
+
+      it "should return the v1 JSON representation when called through #for('v1')" do
+        subject_from_json = ActiveSupport::JSON.decode(subject.for('v1').to_json)
+
+        subject_from_json['company'].should have_key('v1_field')
+        subject_from_json['company']['v1_field'].should == subject.v1_field
+
+        subject_from_json['company'].should_not have_key('v2_field')
+      end
+
+      it "should return the v2 JSON representation when called through #for('v2')" do
+        subject_from_json = ActiveSupport::JSON.decode(subject.for('v2').to_json)
+
+        subject_from_json['company'].should have_key('v2_field')
+        subject_from_json['company']['v2_field'].should == subject.v2_field
+
+        subject_from_json['company'].should_not have_key('v1_field')
       end
     end
     
