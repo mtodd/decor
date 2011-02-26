@@ -306,10 +306,7 @@ module Decor
     # Ensures `options` is an empty Hash even when not set.
     # 
     def options
-      super or begin
-        self.options = {}
-        redo
-      end
+      super or self.options = {}
     end
     
   end
