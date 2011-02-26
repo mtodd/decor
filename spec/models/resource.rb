@@ -32,6 +32,9 @@ class Resource < Struct.new(:name, :value, :multi)
     def computed
       nil
     end
+    def foo
+      "foo in v3"
+    end
   end
   
 end

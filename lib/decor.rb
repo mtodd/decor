@@ -206,11 +206,13 @@ module Decor
 
     # Options can override specific methods
     options = { :version => version }.merge(options)
+
+    singleton_class = class << self; self; end;
     options.each do |option, value_or_proc|
       if value_or_proc.is_a?(Proc) or value_or_proc.is_a?(Method)
-        self.class.send(:define_method, option, value_or_proc)
+        singleton_class.send(:define_method, option, value_or_proc)
       else
-        self.class.send(:define_method, option) { value_or_proc }
+        singleton_class.send(:define_method, option) { value_or_proc }
       end
     end
 
