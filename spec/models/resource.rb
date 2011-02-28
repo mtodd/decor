@@ -37,4 +37,8 @@ class Resource < Struct.new(:name, :value, :multi)
     end
   end
   
+  def computed?
+    respond_to?(:computed) and not computed.nil?
+  end
+  
 end
