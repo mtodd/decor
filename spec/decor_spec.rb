@@ -88,7 +88,7 @@ describe Decor do
       it "should allow computed values" do
         subject.computed.should == @value * @multi
       end
-      
+
       it "should be able to see the computed values from the target object" do
         subject.should be_computed
       end
