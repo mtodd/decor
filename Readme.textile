@@ -126,6 +126,10 @@ Using the versioned instance:
 resource = resource.for(version)
 </pre>
 
+h2. TODOs
+
+* delegate to other versions
+
 h2. Contributing
 
 Feel free to open "Issues":https://github.com/mtodd/decor/issues or fork and create "Pull Requests":https://github.com/mtodd/decor/pulls.
